@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trifectum</title>
+<style>
+@font-face {
+  font-family: 'Perfect DOS VGA 437';
+  src: url('Perfect DOS VGA 437.ttf') format('truetype');
+}
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+body {
+  background: #008080;
+  font-family: 'Perfect DOS VGA 437', monospace;
+  font-size: 14px;
+  color: #000;
+  image-rendering: pixelated;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+}
+
+/* ─── Voronoi canvas ─── */
+#voronoi {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
+/* ─── floating windows ─── */
+.win {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  background: #c0c0c0;
+  box-shadow:
+    2px 2px 0 rgba(0,0,0,0.25),
+    1px 1px 0 #fff,
+    -1px -1px 0 #808080,
+    0 0 0 1px #000;
+  padding: 2px;
+}
+.win-body {
+  border: 1px solid #404040;
+}
+
+/* ─── top bar window ─── */
+.win-topbar {
+  top: 40px;
+  width: 720px;
+}
+.win-topbar .win-body {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 20px;
+}
+.win-topbar .logo {
+  width: 96px;
+  height: 96px;
+  flex-shrink: 0;
+}
+.win-topbar .brand {
+  font-size: 42px;
+  letter-spacing: 12px;
+  color: #000060;
+  line-height: 1;
+}
+
+/* ─── content window ─── */
+.win-content {
+  top: 210px;
+  width: 720px;
+  height: 380px;
+}
+.win-content .win-body {
+  display: flex;
+  height: 100%;
+}
+
+/* ─── sidebar within window ─── */
+.sidebar {
+  width: 170px;
+  flex-shrink: 0;
+  background: #c0c0c0;
+  border-right: 1px solid #808080;
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+}
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.nav-btn {
+  font-family: inherit;
+  font-size: 13px;
+  color: #000;
+  background: #c0c0c0;
+  border: none;
+  padding: 4px 10px;
+  text-align: left;
+  cursor: pointer;
+  letter-spacing: 1px;
+  box-shadow: 1px 1px 0 #fff, -1px -1px 0 #808080, 0 0 0 1px #000;
+}
+.nav-btn:hover {
+  background: #d4d4d4;
+}
+.nav-btn.active {
+  box-shadow: -1px -1px 0 #fff, 1px 1px 0 #808080, 0 0 0 1px #000;
+  padding: 5px 9px 3px 11px;
+  background: #b4b4b4;
+}
+
+/* ─── content area ─── */
+.content {
+  flex: 1;
+  background: #c0c0c0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  overflow: auto;
+}
+.panel {
+  display: none;
+  width: 100%;
+}
+.panel.active {
+  display: block;
+}
+
+/* ─── games panel ─── */
+.games-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.game-row {
+  background: #c0c0c0;
+  box-shadow: 1px 1px 0 #fff, -1px -1px 0 #808080, 0 0 0 1px #000;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.game-row .icon {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+}
+.game-row .name {
+  font-size: 14px;
+  letter-spacing: 2px;
+  color: #000060;
+}
+
+/* ─── contact panel ─── */
+.contact-links {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 300px;
+}
+.contact-btn {
+  font-family: inherit;
+  font-size: 13px;
+  color: #000;
+  background: #c0c0c0;
+  border: none;
+  padding: 5px 14px;
+  text-align: left;
+  cursor: pointer;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  letter-spacing: 1px;
+  box-shadow: 1px 1px 0 #fff, -1px -1px 0 #808080, 0 0 0 1px #000;
+}
+.contact-btn:active {
+  box-shadow: -1px -1px 0 #fff, 1px 1px 0 #808080, 0 0 0 1px #000;
+  padding: 6px 13px 4px 15px;
+}
+.contact-btn .sym {
+  font-size: 14px;
+  color: #000060;
+  line-height: 1;
+}
+
+/* ─── mobile ─── */
+@media (max-width: 760px) {
+  .win-topbar {
+    top: 8px;
+    width: calc(100vw - 16px);
+  }
+  .win-topbar .win-body {
+    gap: 10px;
+    padding: 10px 14px;
+  }
+  .win-topbar .logo {
+    width: 48px;
+    height: 48px;
+  }
+  .win-topbar .brand {
+    font-size: 22px;
+    letter-spacing: 6px;
+  }
+  .win-content {
+    top: 86px;
+    width: calc(100vw - 16px);
+    height: auto;
+    bottom: 8px;
+  }
+  .sidebar {
+    width: 100px;
+    padding: 8px 6px;
+  }
+  .nav-btn {
+    font-size: 12px;
+    padding: 3px 8px;
+  }
+  .nav-btn.active {
+    padding: 4px 7px 2px 9px;
+  }
+  .content {
+    padding: 12px;
+  }
+  .game-row {
+    padding: 8px;
+    gap: 8px;
+  }
+  .game-row .icon {
+    width: 36px;
+    height: 36px;
+  }
+  .game-row .name {
+    font-size: 12px;
+  }
+  .contact-links {
+    max-width: 100%;
+  }
+  .contact-btn {
+    font-size: 12px;
+    padding: 4px 10px;
+  }
+}
+
+@media (max-width: 420px) {
+  .win-topbar .logo {
+    width: 36px;
+    height: 36px;
+  }
+  .win-topbar .brand {
+    font-size: 17px;
+    letter-spacing: 4px;
+  }
+  .win-topbar .win-body {
+    gap: 8px;
+    padding: 8px 10px;
+  }
+  .win-content {
+    top: 68px;
+  }
+  .sidebar {
+    width: 80px;
+    padding: 6px 4px;
+  }
+  .nav-btn {
+    font-size: 11px;
+    padding: 2px 6px;
+  }
+  .game-row .name {
+    font-size: 11px;
+    letter-spacing: 1px;
+  }
+}
+</style>
+</head>
+<body>
+
+<canvas id="voronoi"></canvas>
+
+<div class="win win-topbar">
+  <div class="win-body">
+    <svg class="logo" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="20,20 180,20 180,180 20,180" fill="#c0c0c0" stroke="#000" stroke-width="1.5" stroke-linejoin="miter"/>
+      <polygon points="20,20 180,20 174,26 26,26 26,174 20,180" fill="#fff"/>
+      <polygon points="180,20 180,180 20,180 26,174 174,174 174,26" fill="#808080"/>
+      <polygon points="26,26 174,26 174,174 26,174" fill="#c0c0c0"/>
+      <path d="M49.329,166.0 L49.329,65.059 L119.412,100.0 L135.031,92.056 L34.089,41.586 L34.0,158.235 Z" fill="#4a4ac0"/>
+      <path d="M49.329,65.059 L65.059,72.824 L65.148,142.885 L166.089,92.414 L166.0,107.765 L49.329,166.0 Z" fill="#000060"/>
+      <path d="M65.059,127.176 L135.031,92.056 L34.089,41.586 L49.529,34.0 L166.089,92.414 L65.148,142.885 Z" fill="#26268f"/>
+    </svg>
+    <span class="brand">TRIFECTUM</span>
+  </div>
+</div>
+
+<div class="win win-content">
+  <div class="win-body">
+    <div class="sidebar">
+      <nav class="sidebar-nav" id="nav">
+        <button class="nav-btn active" data-panel="games">Games</button>
+        <button class="nav-btn" data-panel="contact">Contact</button>
+      </nav>
+    </div>
+    <div class="content">
+
+      <div class="panel active" id="panel-games">
+        <div class="games-list">
+          <div class="game-row">
+            <svg class="icon" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" style="width:40px;height:40px">
+              <polygon points="20,20 180,20 180,180 20,180" fill="#c0c0c0" stroke="#000" stroke-width="1.5" stroke-linejoin="miter"/>
+              <polygon points="20,20 180,20 174,26 26,26 26,174 20,180" fill="#fff"/>
+              <polygon points="180,20 180,180 20,180 26,174 174,174 174,26" fill="#808080"/>
+              <polygon points="26,26 174,26 174,174 26,174" fill="#c0c0c0"/>
+              <path fill="#6a6aff" d="M68.5,36.5 L127,36.5 L127,49.5 L81.5,49.5 L81.5,94.5 L127,94.5 L127,107.5 L81.5,107.5 L81.5,152.5 L127,152.5 L127,165.5 L68.5,165.5 Z"/>
+              <path fill="#000060" d="M67.5,35.5 L126,35.5 L126,48.5 L80.5,48.5 L80.5,93.5 L126,93.5 L126,106.5 L80.5,106.5 L80.5,151.5 L126,151.5 L126,164.5 L67.5,164.5 Z"/>
+            </svg>
+            <span class="name">ERGOGRAPHIA</span>
+          </div>
+          <div class="game-row">
+            <svg class="icon" viewBox="0 0 200 210" xmlns="http://www.w3.org/2000/svg">
+              <polygon points="100,20 185.6,82.2 152.9,182.8 47.1,182.8 14.4,82.2" fill="#c0c0c0" stroke="#000" stroke-width="1.5" stroke-linejoin="miter"/>
+              <polygon points="14.4,82.2 100,20 185.6,82.2 179.6,84.1 100,26.3 20.4,84.1" fill="#fff"/>
+              <polygon points="185.6,82.2 152.9,182.8 47.1,182.8 14.4,82.2 20.4,84.1 50.8,177.7 149.2,177.7 179.6,84.1" fill="#808080"/>
+              <polygon points="100,26.3 179.6,84.1 149.2,177.7 50.8,177.7 20.4,84.1" fill="#c0c0c0"/>
+              <path fill-rule="evenodd" fill="#6a6aff" d="M73.5,67 L117.5,67 L117.5,78 L128.5,78 L128.5,100 L117.5,100 L117.5,111 L84.5,111 L84.5,155 L73.5,155 Z M84.5,78 L117.5,78 L117.5,100 L84.5,100 Z"/>
+              <path fill-rule="evenodd" fill="#000060" d="M72.5,66 L116.5,66 L116.5,77 L127.5,77 L127.5,99 L116.5,99 L116.5,110 L83.5,110 L83.5,154 L72.5,154 Z M83.5,77 L116.5,77 L116.5,99 L83.5,99 Z"/>
+              <path fill-rule="evenodd" fill="#b8b8ff" d="M84.5,79 L116.5,79 L116.5,82 L88.5,82 L88.5,98 L84.5,98 Z"/>
+            </svg>
+            <span class="name">POLYTOPE</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" id="panel-contact">
+        <div class="contact-links">
+          <a class="contact-btn" href="https://github.com/TrifectumSoftware" target="_blank" rel="noopener">
+            <span class="sym">&#9632;</span> github/trifectum
+          </a>
+          <a class="contact-btn" href="https://discord.gg/SSdhf43GDR" target="_blank" rel="noopener">
+            <span class="sym">&#9632;</span> discord
+          </a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  var navBtns = document.querySelectorAll('.nav-btn');
+  var panels = {
+    games: document.getElementById('panel-games'),
+    contact: document.getElementById('panel-contact')
+  };
+
+  navBtns.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      navBtns.forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      var target = btn.getAttribute('data-panel');
+      for (var key in panels) {
+        panels[key].classList.toggle('active', key === target);
+      }
+    });
+  });
+
+  /* ─── Voronoi ─── */
+  var canvas = document.getElementById('voronoi');
+  var ctx = canvas.getContext('2d');
+  var W, H;
+  var isMobile = window.innerWidth < 760;
+
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+    isMobile = W < 760;
+  }
+  resize();
+  window.addEventListener('resize', function() {
+    resize();
+    initSeeds();
+  });
+
+  var NUM_SEEDS = isMobile ? 12 : 20;
+  var seeds = [];
+
+  function initSeeds() {
+    NUM_SEEDS = isMobile ? 12 : 20;
+    seeds = [];
+    for (var i = 0; i < NUM_SEEDS; i++) {
+      seeds.push({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        vx: (Math.random() - 0.5) * 0.6,
+        vy: (Math.random() - 0.5) * 0.6
+      });
+    }
+  }
+  initSeeds();
+
+  function updateSeeds() {
+    for (var i = 0; i < seeds.length; i++) {
+      var s = seeds[i];
+      s.x += s.vx;
+      s.y += s.vy;
+      if (s.x < 0 || s.x > W) { s.vx *= -1; s.x = s.x < 0 ? 0 : W; }
+      if (s.y < 0 || s.y > H) { s.vy *= -1; s.y = s.y < 0 ? 0 : H; }
+    }
+  }
+
+  function drawVoronoi() {
+    var step = isMobile ? 10 : 6;
+    var cols = Math.ceil(W / step);
+    var rows = Math.ceil(H / step);
+    ctx.clearRect(0, 0, W, H);
+
+    var cells = [];
+    for (var r = 0; r < rows; r++) {
+      cells[r] = [];
+      for (var c = 0; c < cols; c++) {
+        var px = c * step;
+        var py = r * step;
+        var minDist = Infinity;
+        var closest = 0;
+        for (var i = 0; i < seeds.length; i++) {
+          var dx = seeds[i].x - px;
+          var dy = seeds[i].y - py;
+          var dist = dx * dx + dy * dy;
+          if (dist < minDist) {
+            minDist = dist;
+            closest = i;
+          }
+        }
+        cells[r][c] = closest;
+
+        var shade = ((closest * 37 + 13) % 50) - 25;
+        var r2 = Math.max(0, Math.min(255, shade));
+        var g = Math.max(0, Math.min(255, 128 + shade));
+        var b = Math.max(0, Math.min(255, 128 + shade));
+
+        ctx.fillStyle = 'rgb(' + r2 + ',' + g + ',' + b + ')';
+        ctx.fillRect(px, py, step, step);
+      }
+    }
+
+    ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+    ctx.lineWidth = 1;
+    for (var r = 0; r < rows; r++) {
+      for (var c = 0; c < cols; c++) {
+        var id = cells[r][c];
+        if (c + 1 < cols && cells[r][c + 1] !== id) {
+          ctx.beginPath();
+          ctx.moveTo((c + 1) * step, r * step);
+          ctx.lineTo((c + 1) * step, (r + 1) * step);
+          ctx.stroke();
+        }
+        if (r + 1 < rows && cells[r + 1][c] !== id) {
+          ctx.beginPath();
+          ctx.moveTo(c * step, (r + 1) * step);
+          ctx.lineTo((c + 1) * step, (r + 1) * step);
+          ctx.stroke();
+        }
+      }
+    }
+  }
+
+  var lastTime = 0;
+  function frame(time) {
+    if (time - lastTime > 80) {
+      updateSeeds();
+      drawVoronoi();
+      lastTime = time;
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+
+</body>
+</html>
